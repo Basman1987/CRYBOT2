@@ -12,6 +12,13 @@ const ERC20_ABI = ["function symbol() view returns (string)", "function decimals
 
 export const dynamic = "force-dynamic"
 
+function formatExactPrice(rawAmount, decimals) {
+  const amountStr = rawAmount.toString().padStart(decimals + 1, "0")
+  const integerPart = amountStr.slice(0, -decimals) || "0"
+  const decimalPart = amountStr.slice(-decimals).padEnd(9, "0").slice(0, 9)
+  return `${integerPart}.${decimalPart}`
+}
+
 export async function GET() {
   if (!process.env.DISCORD_TOKEN || !process.env.DISCORD_CHANNEL_ID) {
     return NextResponse.json({ error: "Missing environment variables" }, { status: 500 })
@@ -29,9 +36,9 @@ export async function GET() {
     const amountIn = ethers.parseUnits("1", tokenDecimals)
     const amounts = await router.getAmountsOut(amountIn, [TOKEN_ADDRESS, WCRO, USDC])
 
-    // Format price using USDC decimals
-    const rawPrice = amounts[2].toString()
-    const formattedPrice = ethers.formatUnits(rawPrice, usdcDecimals)
+    // Use manual formatting to get exact price
+    const rawPrice = amounts[2]
+    const formattedPrice = formatExactPrice(rawPrice, usdcDecimals)
 
     // Prepare Discord message with exact price
     const message = {
