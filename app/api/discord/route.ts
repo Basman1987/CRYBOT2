@@ -13,35 +13,17 @@ const ERC20_ABI = ["function symbol() view returns (string)", "function decimals
 export const dynamic = "force-dynamic"
 
 function formatSmallNumber(bigNumberStr: string): string {
-  // Remove any scientific notation and ensure we have a decimal string
-  const plainNumber = bigNumberStr.includes("e-") ? Number(bigNumberStr).toFixed(20) : bigNumberStr
+  // Get full precision by using more decimal places in initial conversion
+  const plainNumber = bigNumberStr.includes("e-") ? Number(bigNumberStr).toFixed(30) : bigNumberStr
 
   // Split into whole and decimal parts
-  const [whole, decimal = ""] = plainNumber.split(".")
+  const [_, decimal = ""] = plainNumber.split(".")
 
-  if (!decimal) return whole
+  // Ensure we have enough decimal places
+  const paddedDecimal = decimal.padEnd(9, "0")
 
-  // Count leading zeros
-  let leadingZeros = 0
-  for (let i = 0; i < decimal.length; i++) {
-    if (decimal[i] === "0") {
-      leadingZeros++
-    } else {
-      break
-    }
-  }
-
-  // Get all significant digits after the leading zeros
-  const significantDigits = decimal.slice(leadingZeros)
-
-  // Remove trailing zeros from significant digits
-  const trimmedDigits = significantDigits.replace(/0+$/, "")
-
-  // If all are zeros, just return the whole number part
-  if (!trimmedDigits) return whole
-
-  // Return formatted string showing all non-zero digits
-  return `0.(${leadingZeros})${trimmedDigits}`
+  // Format with exactly 9 decimal places
+  return `0.${paddedDecimal.slice(0, 9)}`
 }
 
 export async function GET() {
@@ -59,9 +41,9 @@ export async function GET() {
     const amountIn = ethers.parseUnits("1", decimals)
     const amounts = await router.getAmountsOut(amountIn, [TOKEN_ADDRESS, WCRO, USDC])
 
-    // Get the exact string representation without any rounding
+    // Get the exact string representation with maximum precision
     const rawPrice = amounts[2].toString()
-    const price = ethers.formatUnits(rawPrice, 6)
+    const price = ethers.formatUnits(rawPrice, 9) // Increased precision to 9 decimals
     const formattedPrice = formatSmallNumber(price)
 
     // Prepare Discord message with exact price
