@@ -36,32 +36,23 @@ export async function GET() {
 
     const amountIn = ethers.parseUnits("1", tokenDecimals)
 
-    // Check both paths to get the most accurate price
-    const [forwardAmounts, reverseAmounts, croAmounts] = await Promise.all([
-      router.getAmountsOut(amountIn, [TOKEN_ADDRESS, WCRO, USDC]),
-      router.getAmountsOut(ethers.parseUnits("1", usdcDecimals), [USDC, WCRO, TOKEN_ADDRESS]),
-      router.getAmountsOut(amountIn, [TOKEN_ADDRESS, WCRO]), // Direct TOKEN to CRO price
-    ])
+    // Step 1: Get Token Price in CRO
+    const croAmounts = await router.getAmountsOut(amountIn, [TOKEN_ADDRESS, WCRO])
+    const tokenPriceInCRO = formatExactPrice(croAmounts[1], 18)
 
-    // Calculate USD prices from both paths
-    const priceForward = formatExactPrice(forwardAmounts[2], usdcDecimals)
-    const priceReverse = formatExactPrice(
-      (BigInt(1e18) * BigInt(1)) / reverseAmounts[2], // Invert to get TOKEN price in USDC
-      usdcDecimals,
-    )
+    // Step 2: Get CRO Price in USDC
+    const croToUsdcAmounts = await router.getAmountsOut(ethers.parseUnits("1", 18), [WCRO, USDC])
+    const croPriceInUSDC = formatExactPrice(croToUsdcAmounts[1], usdcDecimals)
 
-    // Calculate CRO price
-    const croPrice = formatExactPrice(croAmounts[1], 18) // WCRO uses 18 decimals
+    // Step 3: Calculate Token Price in USD
+    const tokenPriceInUSD = (Number.parseFloat(tokenPriceInCRO) * Number.parseFloat(croPriceInUSDC)).toFixed(9)
 
-    // Compare both USD prices and take the most accurate one
-    const formattedPrice = Number(priceForward) > 0 ? priceForward : priceReverse
-
-    // Prepare Discord message with both USD and CRO prices
+    // Prepare Discord message with exact price
     const message = {
       content: `
 📊 **${symbol} Price Update**
-💵 USD Price: $${formattedPrice}
-🪙 CRO Price: ${croPrice} CRO
+💵 USD Price: $${tokenPriceInUSD}
+🪙 CRO Price: ${tokenPriceInCRO} CRO
 ⏰ Updated: ${new Date().toLocaleString()}
 🔗 Contract: \`${TOKEN_ADDRESS}\`
       `,
@@ -85,8 +76,8 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       message: "Price update sent successfully",
-      price: formattedPrice,
-      croPrice: croPrice,
+      usdPrice: tokenPriceInUSD,
+      croPrice: tokenPriceInCRO,
     })
   } catch (error) {
     console.error("Error:", error)
