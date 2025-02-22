@@ -31,11 +31,13 @@ function formatSmallNumber(bigNumberStr: string): string {
     }
   }
 
-  // Get the significant digits without truncating
+  // Get the first significant digit and exactly 3 digits after it
   const significantDigits = decimal.slice(leadingZeros)
+  const firstDigit = significantDigits[0] || "0"
+  const extraDigits = significantDigits.slice(1, 4).padEnd(3, "0")
 
-  // Return formatted string with all digits preserved
-  return `0.(${leadingZeros})${significantDigits}`
+  // Return formatted string with exactly 3 decimal places after first significant digit
+  return `0.(${leadingZeros})${firstDigit}${extraDigits}`
 }
 
 export async function GET() {
