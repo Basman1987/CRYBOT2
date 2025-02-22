@@ -31,13 +31,17 @@ function formatSmallNumber(bigNumberStr: string): string {
     }
   }
 
-  // Get the first significant digit and more digits after it
+  // Get all significant digits after the leading zeros
   const significantDigits = decimal.slice(leadingZeros)
-  const firstDigit = significantDigits[0] || "0"
-  const extraDigits = significantDigits.slice(1, 6).padEnd(5, "0") // Get 5 digits after first significant digit
 
-  // Return formatted string with exactly 5 decimal places after first significant digit
-  return `0.(${leadingZeros})${firstDigit}${extraDigits}`
+  // Remove trailing zeros from significant digits
+  const trimmedDigits = significantDigits.replace(/0+$/, "")
+
+  // If all are zeros, just return the whole number part
+  if (!trimmedDigits) return whole
+
+  // Return formatted string showing all non-zero digits
+  return `0.(${leadingZeros})${trimmedDigits}`
 }
 
 export async function GET() {
