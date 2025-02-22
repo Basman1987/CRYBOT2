@@ -12,10 +12,11 @@ const ERC20_ABI = ["function symbol() view returns (string)", "function decimals
 
 export const dynamic = "force-dynamic"
 
+// Updated function to handle BigInt safely
 function formatExactPrice(rawAmount, decimals) {
-  const amountStr = rawAmount.toString().padStart(decimals + 1, "0")
-  const integerPart = amountStr.slice(0, -decimals) || "0"
-  const decimalPart = amountStr.slice(-decimals).padEnd(9, "0").slice(0, 9)
+  const amountStr = rawAmount.toString().padStart(Number(decimals) + 1, "0")
+  const integerPart = amountStr.slice(0, -Number(decimals)) || "0"
+  const decimalPart = amountStr.slice(-Number(decimals)).padEnd(9, "0").slice(0, 9)
   return `${integerPart}.${decimalPart}`
 }
 
