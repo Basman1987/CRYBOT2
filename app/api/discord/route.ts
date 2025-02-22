@@ -38,6 +38,9 @@ export async function GET() {
       `,
     }
 
+    // Log the channel ID before sending the message
+    console.log("Attempting to send message to channel:", process.env.DISCORD_CHANNEL_ID)
+
     // Send message using Discord REST API
     const response = await fetch(`https://discord.com/api/v10/channels/${process.env.DISCORD_CHANNEL_ID}/messages`, {
       method: "POST",
@@ -50,6 +53,8 @@ export async function GET() {
 
     if (!response.ok) {
       const errorData = await response.text()
+      console.error("Discord API Response:", errorData)
+      console.error("Channel ID used:", process.env.DISCORD_CHANNEL_ID)
       throw new Error(`Discord API error: ${response.status} ${response.statusText} - ${errorData}`)
     }
 
