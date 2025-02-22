@@ -12,29 +12,30 @@ const ERC20_ABI = ["function symbol() view returns (string)", "function decimals
 
 export const dynamic = "force-dynamic"
 
-// Function to format very small numbers
-function formatSmallNumber(num: number, precision = 8): string {
-  if (num === 0) return "0.000000"
+function formatSmallNumber(bigNumberStr: string): string {
+  // Remove any scientific notation and ensure we have a decimal string
+  const plainNumber = bigNumberStr.includes("e-") ? Number(bigNumberStr).toFixed(20) : bigNumberStr
 
-  const numStr = num.toFixed(precision) // Use fixed precision
-  if (numStr.includes("e-")) {
-    const [base, exponent] = numStr.split("e-")
-    const zeros = Number.parseInt(exponent) - 1
-    return `0.${"0".repeat(zeros)}${base.replace(".", "")}`
-  }
+  // Split into whole and decimal parts
+  const [whole, decimal = ""] = plainNumber.split(".")
 
-  const [whole, decimal] = numStr.split(".")
-  if (decimal) {
-    let leadingZeros = 0
-    for (let i = 0; i < decimal.length; i++) {
-      if (decimal[i] === "0") leadingZeros++
-      else break
+  if (!decimal) return whole
+
+  // Count leading zeros
+  let leadingZeros = 0
+  for (let i = 0; i < decimal.length; i++) {
+    if (decimal[i] === "0") {
+      leadingZeros++
+    } else {
+      break
     }
-    // Show all remaining digits after the leading zeros
-    return `0.(${leadingZeros})${decimal.slice(leadingZeros)}`
   }
 
-  return numStr
+  // Get the significant digits without truncating
+  const significantDigits = decimal.slice(leadingZeros)
+
+  // Return formatted string with all digits preserved
+  return `0.(${leadingZeros})${significantDigits}`
 }
 
 export async function GET() {
@@ -51,11 +52,13 @@ export async function GET() {
 
     const amountIn = ethers.parseUnits("1", decimals)
     const amounts = await router.getAmountsOut(amountIn, [TOKEN_ADDRESS, WCRO, USDC])
-    const price = Number(ethers.formatUnits(amounts[2], 6))
-    // Format with more precision
-    const formattedPrice = formatSmallNumber(price, 8) // Increased precision to 8 digits
 
-    // Prepare Discord message with formatted price
+    // Get the exact string representation without any rounding
+    const rawPrice = amounts[2].toString()
+    const price = ethers.formatUnits(rawPrice, 6)
+    const formattedPrice = formatSmallNumber(price)
+
+    // Prepare Discord message with exact price
     const message = {
       content: `
 📊 **${symbol} Price Update**
