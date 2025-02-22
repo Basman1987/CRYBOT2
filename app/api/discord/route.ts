@@ -12,20 +12,6 @@ const ERC20_ABI = ["function symbol() view returns (string)", "function decimals
 
 export const dynamic = "force-dynamic"
 
-function formatSmallNumber(bigNumberStr: string): string {
-  // Get full precision by using more decimal places in initial conversion
-  const plainNumber = bigNumberStr.includes("e-") ? Number(bigNumberStr).toFixed(30) : bigNumberStr
-
-  // Split into whole and decimal parts
-  const [_, decimal = ""] = plainNumber.split(".")
-
-  // Ensure we have enough decimal places
-  const paddedDecimal = decimal.padEnd(9, "0")
-
-  // Format with exactly 9 decimal places
-  return `0.${paddedDecimal.slice(0, 9)}`
-}
-
 export async function GET() {
   if (!process.env.DISCORD_TOKEN || !process.env.DISCORD_CHANNEL_ID) {
     return NextResponse.json({ error: "Missing environment variables" }, { status: 500 })
@@ -35,16 +21,17 @@ export async function GET() {
     const provider = new ethers.JsonRpcProvider("https://evm.cronos.org/")
     const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, provider)
     const token = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, provider)
+    const usdc = new ethers.Contract(USDC, ERC20_ABI, provider)
 
-    const [symbol, decimals] = await Promise.all([token.symbol(), token.decimals()])
+    // Fetch token and USDC decimals
+    const [symbol, tokenDecimals, usdcDecimals] = await Promise.all([token.symbol(), token.decimals(), usdc.decimals()])
 
-    const amountIn = ethers.parseUnits("1", decimals)
+    const amountIn = ethers.parseUnits("1", tokenDecimals)
     const amounts = await router.getAmountsOut(amountIn, [TOKEN_ADDRESS, WCRO, USDC])
 
-    // Get the exact string representation with maximum precision
+    // Format price using USDC decimals
     const rawPrice = amounts[2].toString()
-    const price = ethers.formatUnits(rawPrice, 9) // Increased precision to 9 decimals
-    const formattedPrice = formatSmallNumber(price)
+    const formattedPrice = ethers.formatUnits(rawPrice, usdcDecimals)
 
     // Prepare Discord message with exact price
     const message = {
